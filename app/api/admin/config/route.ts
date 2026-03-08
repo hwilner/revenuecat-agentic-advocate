@@ -4,6 +4,7 @@ import { getAgentConfig, listSelfEditEvents } from '@/lib/agentConfig';
 import { getSecretFromRequest } from '@/lib/auth';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * Admin-only config inspection.

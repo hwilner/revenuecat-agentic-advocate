@@ -4,6 +4,7 @@ import { getEnv } from '@/lib/env';
 import { getSecretFromRequest } from '@/lib/auth';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * One-time DB initialization endpoint.

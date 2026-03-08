@@ -3,6 +3,7 @@ import { getEnv } from '@/lib/env';
 import { getSecretFromRequest } from '@/lib/auth';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * Vercel Cron calls this endpoint on schedule.

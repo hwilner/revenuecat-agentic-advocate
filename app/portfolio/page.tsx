@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { listPublicArtifacts } from '@/lib/publicArtifacts';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export default async function PortfolioPage() {
   const items = await listPublicArtifacts(50);

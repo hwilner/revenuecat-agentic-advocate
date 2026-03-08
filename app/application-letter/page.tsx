@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getPublicArtifact } from '@/lib/publicArtifacts';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function Markdown({ value }: { value: string }) {
   // Minimal markdown display without extra deps.

@@ -327,7 +327,7 @@ export async function POST(req: Request) {
         tools: toolsForStep,
       });
 
-      artifacts.push({ specialist: step.specialist, ...res.meta });
+      artifacts.push({ specialist: step.specialist, ...(res.meta as Record<string, unknown>) });
       evidence.push({ specialist: step.specialist, text: res.text });
     }
 
