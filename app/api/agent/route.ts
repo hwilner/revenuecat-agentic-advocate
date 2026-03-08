@@ -212,7 +212,7 @@ export async function POST(req: Request) {
     publish_public_artifact: tool({
       description:
         'Publish a public artifact (markdown) that becomes visible on /application-letter (special slug) or /p/[slug]. Use slug="application-letter" for the application letter.',
-      inputSchema: z.object({
+      parameters: z.object({
         slug: z
           .string()
           .min(1)
@@ -261,7 +261,7 @@ export async function POST(req: Request) {
     update_agent_config: tool({
       description:
         'Self-edit tool: update agent name/positioning/system prompt addendum/portfolio links. MUST NOT change guardrails or token gating. Only runs when tokenValidated=true.',
-      inputSchema: z.object({
+      parameters: z.object({
         agent_name: z.string().min(1).optional(),
         positioning: z.string().min(1).optional(),
         system_prompt_addendum: z.string().min(1).optional(),
