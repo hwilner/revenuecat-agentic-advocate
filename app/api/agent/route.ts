@@ -45,8 +45,8 @@ async function listRecentRuns(limit = 10): Promise<string> {
     .join('\n');
 }
 
-function filterMcpTools(allTools: ToolSet, allowWrites: boolean): ToolSet {
-  if (allowWrites) return allTools;
+function filterMcpTools(allTools: Record<string, any>, allowWrites: boolean): ToolSet {
+  if (allowWrites) return allTools as ToolSet;
 
   // Prefer an explicit allow-list for read-only access.
   const allowList = new Set([
@@ -61,11 +61,11 @@ function filterMcpTools(allTools: ToolSet, allowWrites: boolean): ToolSet {
     'mcp_RC_get_app_store_config',
   ]);
 
-  const filtered: ToolSet = {};
+  const filtered: Record<string, any> = {};
   for (const [name, tool] of Object.entries(allTools)) {
     if (allowList.has(name)) filtered[name] = tool;
   }
-  return filtered;
+  return filtered as ToolSet;
 }
 
 /**
