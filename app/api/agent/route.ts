@@ -142,11 +142,15 @@ export async function POST(req: Request) {
         note: `Request: ${prompt}`,
       });
 
-      await sendTelegramMessage(
-        `Upgrade token requested.\n\n*Reason:* ${
-          decision.requiresUpgrade ? decision.reason : quotaReason
-        }\n*Expires:* ${expiresAt.toISOString()}\n\n*Token:* \`${token}\`\n\nUser must re-run the request with upgrade_token.`,
-      );
+      try {
+        await sendTelegramMessage(
+          `Upgrade token requested.\n\nReason: ${
+            decision.requiresUpgrade ? decision.reason : quotaReason
+          }\nExpires: ${expiresAt.toISOString()}\n\nToken: ${token}\n\nUser must re-run the request with upgrade_token.`,
+        );
+      } catch (e) {
+        console.error('Telegram notification failed (non-fatal):', e);
+      }
 
       return NextResponse.json(
         {
