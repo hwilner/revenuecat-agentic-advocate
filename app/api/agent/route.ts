@@ -345,6 +345,49 @@ export async function POST(req: Request) {
       evidence.push({ specialist: step.specialist, text: res.text });
     }
 
+    // 4b) Dedicated publish step: detect if publishing was requested and do it directly.
+    //     This avoids relying on the LLM to call tools during streaming.
+    let publishResult: { url: string; slug: string } | null = null;
+    const publishPatterns = /publish|application.letter|blog.post|portfolio/i;
+    if (publishPatterns.test(prompt)) {
+      try {
+        // Use LLM to extract publish parameters and generate content from the specialist outputs
+        const publishSchema = z.object({
+          should_publish: z.boolean().describe('True if the user explicitly asked to publish/create a public artifact'),
+          slug: z.string().describe('URL-friendly slug for the artifact'),
+          kind: z.string().describe('Artifact kind: application-letter, blog-post, portfolio, etc.'),
+          title: z.string().describe('Title for the published artifact'),
+          content_md: z.string().describe('The FULL Markdown content to publish. Must be at least 300 words. Compose this from the specialist outputs below — do NOT return a summary or placeholder.'),
+        });
+
+        const { object: pubObj } = await generateObject({
+          model: openai(env.OPENAI_MODEL),
+          system: `You are a publishing assistant. The user requested content to be published. Extract the publish parameters from the user's request and the specialist outputs below. CRITICAL: The content_md field must contain the FULL article/letter content (at least 300 words of well-written Markdown). Compose it from the specialist outputs — expand, polish, and format it properly. Do NOT return a summary, placeholder, or empty string.`,
+          prompt: `User request: ${prompt}\n\nSpecialist outputs:\n${JSON.stringify(evidence, null, 2)}\n\nExtract the publish parameters. If the user specified a slug, kind, or title, use those. Otherwise, generate appropriate ones. The content_md MUST be the full article content.`,
+          schema: publishSchema,
+        });
+
+        if (pubObj.should_publish && pubObj.content_md && pubObj.content_md.length > 100) {
+          await upsertPublicArtifact({
+            slug: pubObj.slug,
+            kind: pubObj.kind,
+            title: pubObj.title,
+            contentMd: pubObj.content_md,
+            metadata: {},
+          });
+
+          const pubUrl = pubObj.slug === 'application-letter'
+            ? `${origin}/application-letter`
+            : `${origin}/p/${encodeURIComponent(pubObj.slug)}`;
+
+          publishResult = { url: pubUrl, slug: pubObj.slug };
+          evidence.push({ specialist: 'PublishingEngine', text: `Successfully published "${pubObj.title}" to ${pubUrl}` });
+        }
+      } catch (pubErr) {
+        console.error('Dedicated publish step failed (non-fatal):', pubErr);
+      }
+    }
+
     // Build final response with streaming.
     const kb = getKnowledgeBase();
     const finalSystem =
