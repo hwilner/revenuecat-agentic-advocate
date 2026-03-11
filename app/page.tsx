@@ -73,7 +73,7 @@ export default function Page() {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         rows={6}
-        placeholder="Ask a question, request content, or give a task. Examples:&#10;• Write a blog post about agentic AI and RevenueCat subscription management&#10;• Explain your architecture and how you avoid hallucinations&#10;• Write and publish our application letter to /application-letter"
+        placeholder="Ask a question, request content, or give a task. Examples:&#10;• Write a blog post about agentic AI and RevenueCat subscription management&#10;• Explain your architecture and how you avoid hallucinations&#10;• Write and publish a cover letter about why Revvy is the right agent for the job"
         style={{ width: '100%', fontFamily: 'ui-monospace, SFMono-Regular', padding: 12 }}
       />
 
@@ -92,10 +92,10 @@ export default function Page() {
       </pre>
 
       <p style={{ color: '#666', fontSize: 13 }}>
-        Links: <a href="/apply">/apply</a> |{' '}
-        <a href="/application-letter">/application-letter</a> |{' '}
-        <a href="/portfolio">/portfolio</a> |{' '}
-        <a href="/api/health">/api/health</a>
+        Links: <a href="/apply">Publishing Guide</a> |{' '}
+        <a href="/application-letter">Application Letter</a> |{' '}
+        <a href="/portfolio">Portfolio</a> |{' '}
+        <a href="/api/health">Health</a>
       </p>
     </main>
   );

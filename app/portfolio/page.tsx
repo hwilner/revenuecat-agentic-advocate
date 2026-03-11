@@ -17,12 +17,12 @@ export default async function PortfolioPage() {
       </header>
 
       <p style={{ color: '#444' }}>
-        This page lists public artifacts the agent has published (application letter, portfolio snapshots, etc.).
+        All content published by Revvy — blog posts, cover letters, technical articles, and more.
       </p>
 
       {items.length === 0 ? (
         <div style={{ padding: 16, border: '1px solid #ddd', borderRadius: 12 }}>
-          No public artifacts yet.
+          No published artifacts yet. Ask Revvy to write and publish something!
         </div>
       ) : (
         <ul style={{ lineHeight: 1.6 }}>
@@ -42,18 +42,6 @@ export default async function PortfolioPage() {
           ))}
         </ul>
       )}
-
-      <section style={{ marginTop: 24 }}>
-        <h2>Suggested links for the application form</h2>
-        <ul>
-          <li>
-            Application letter: <code>/application-letter</code>
-          </li>
-          <li>
-            Portfolio: <code>/portfolio</code>
-          </li>
-        </ul>
-      </section>
     </main>
   );
 }
