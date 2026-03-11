@@ -47,7 +47,7 @@ export async function evaluateGuardrails(prompt: string): Promise<GuardrailsDeci
     in_scope: z.boolean().describe('True only if request is within the allowed RevenueCat work scope.'),
     needs_write: z
       .boolean()
-      .describe('True if fulfilling the request likely requires write operations (create/update/delete).'),
+      .describe('True ONLY if the request explicitly asks to modify RevenueCat subscription configuration via MCP tools (create/update/delete entitlements, offerings, products). Writing content, blog posts, tweets, application letters, publishing artifacts, and portfolio pages are NOT write operations — set needs_write=false for those.'),
     reason: z.string().describe('One sentence justification.'),
   });
 
@@ -55,7 +55,7 @@ export async function evaluateGuardrails(prompt: string): Promise<GuardrailsDeci
     const { object } = await generateObject({
       model: openai(env.OPENAI_MODEL),
       system:
-        `You are a policy classifier.\n\nWORK SCOPE:\n${WorkScope}\n\nRules:\n- If the request is about the agent itself (introductions, demos, how it works, greetings), set in_scope=true.\n- If the request is about writing content (blog posts, tweets, letters) related to RevenueCat or agentic AI, set in_scope=true.\n- If the request is clearly unrelated to RevenueCat, app development, or the agent system, set in_scope=false.\n- When in doubt for interview or demo-style questions, lean toward in_scope=true.\n- Mark needs_write=true only if write actions are required (publishing, updating config).`,
+        `You are a policy classifier.\n\nWORK SCOPE:\n${WorkScope}\n\nRules:\n- If the request is about the agent itself (introductions, demos, how it works, greetings), set in_scope=true and needs_write=false.\n- If the request is about writing content (blog posts, tweets, letters, application letters) related to RevenueCat or agentic AI, set in_scope=true and needs_write=false.\n- If the request is about publishing content to the portfolio or application-letter page, set in_scope=true and needs_write=false.\n- If the request is clearly unrelated to RevenueCat, app development, or the agent system, set in_scope=false.\n- When in doubt for interview or demo-style questions, lean toward in_scope=true.\n- ONLY set needs_write=true if the request explicitly asks to modify RevenueCat subscription data via MCP tools (e.g., create/update/delete entitlements, offerings, or products in RevenueCat).\n- Content generation, publishing, and interviews should NEVER require needs_write=true.`,
       prompt: `Classify this user request:\n\n${prompt}`,
       schema,
     });
