@@ -2,11 +2,8 @@
 
 import { useState } from 'react';
 
-type Mode = 'execution' | 'interview';
-
 export default function Page() {
-  const [mode, setMode] = useState<Mode>('interview');
-  const [prompt, setPrompt] = useState('Explain the architecture and show how you avoid hallucinations.');
+  const [prompt, setPrompt] = useState('');
   const [upgradeToken, setUpgradeToken] = useState('');
   const [out, setOut] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,7 +15,7 @@ export default function Page() {
     const res = await fetch('/api/agent', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ mode, prompt, upgrade_token: upgradeToken || undefined }),
+      body: JSON.stringify({ prompt, upgrade_token: upgradeToken || undefined }),
     });
 
     if (!res.ok) {
@@ -50,26 +47,20 @@ export default function Page() {
 
   return (
     <main style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
-      <h1 style={{ marginTop: 0 }}>RevenueCat Interview Agent</h1>
+      <h1 style={{ marginTop: 0 }}>RevenueCat Agentic AI Advocate</h1>
       <p style={{ color: '#444', lineHeight: 1.4 }}>
-        This is a deployable Vercel app. The agent is restricted to the RevenueCat work description.
-        If a user requests extra work, the system issues a single-use upgrade token via Telegram.
+        This agent autonomously handles RevenueCat-related tasks: writing content, answering interview questions,
+        publishing artifacts, and interacting with RevenueCat APIs. Just describe what you need — the agent
+        automatically determines the best approach.
       </p>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-        <label>
-          Mode:{' '}
-          <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-            <option value="interview">interview</option>
-            <option value="execution">execution</option>
-          </select>
-        </label>
         <label style={{ flex: 1 }}>
           Upgrade token (optional):{' '}
           <input
             value={upgradeToken}
             onChange={(e) => setUpgradeToken(e.target.value)}
-            placeholder="Paste token from Telegram"
+            placeholder="Paste token from Telegram (only needed for RevenueCat config changes)"
             style={{ width: '100%' }}
           />
         </label>
@@ -82,6 +73,7 @@ export default function Page() {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         rows={6}
+        placeholder="Ask a question, request content, or give a task. Examples:&#10;• Write a blog post about agentic AI and RevenueCat subscription management&#10;• Explain your architecture and how you avoid hallucinations&#10;• Write and publish our application letter to /application-letter"
         style={{ width: '100%', fontFamily: 'ui-monospace, SFMono-Regular', padding: 12 }}
       />
 

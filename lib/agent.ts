@@ -5,6 +5,34 @@ import { openai } from '@ai-sdk/openai';
 
 export type AgentMode = 'execution' | 'interview';
 
+/**
+ * Auto-detect the mode from the user's prompt using an LLM classifier.
+ */
+export async function detectMode(args: {
+  modelName: string;
+  prompt: string;
+}): Promise<AgentMode> {
+  const schema = z.object({
+    mode: z.enum(['execution', 'interview']).describe(
+      'Choose "execution" if the user wants the agent to DO something (write content, generate a blog post, create a letter, publish an artifact, run a growth experiment, produce a deliverable). Choose "interview" if the user is ASKING a question about the agent, its architecture, capabilities, or wants an explanation/demo.'
+    ),
+    reason: z.string().describe('One sentence justification.'),
+  });
+
+  try {
+    const { object } = await generateObject({
+      model: openai(args.modelName),
+      system: 'You are a request classifier for a RevenueCat AI agent. Determine if the user wants the agent to produce/execute something (execution) or answer questions/explain/demo (interview). When in doubt, prefer execution — the agent should be biased toward action.',
+      prompt: `Classify this request:\n\n${args.prompt}`,
+      schema,
+    });
+    return object.mode;
+  } catch {
+    // Default to execution if classification fails — bias toward action
+    return 'execution';
+  }
+}
+
 export type RunResult = {
   id: string;
   mode: AgentMode;

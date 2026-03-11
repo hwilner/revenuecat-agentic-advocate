@@ -11,7 +11,7 @@ import { evaluateGuardrails } from '@/lib/guardrails';
 import { consumeUpgradeToken, mintUpgradeToken } from '@/lib/tokens';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { requiresUpgradeDueToQuota } from '@/lib/quota';
-import { planRun, runStep, type AgentMode } from '@/lib/agent';
+import { planRun, runStep, detectMode, type AgentMode } from '@/lib/agent';
 import { upsertPublicArtifact } from '@/lib/publicArtifacts';
 import { getAgentConfig, updateAgentConfig } from '@/lib/agentConfig';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -76,7 +76,9 @@ export async function POST(req: Request) {
   const env = getEnv();
   const body = await req.json().catch(() => null);
 
-  const mode = (body?.mode ?? 'interview') as AgentMode;
+  // Auto-detect mode from prompt context (no manual mode selector needed).
+  const explicitMode = body?.mode as AgentMode | undefined;
+  let mode: AgentMode;
   const prompt = String(body?.prompt ?? '').trim();
   const upgradeToken = body?.upgrade_token ? String(body.upgrade_token) : undefined;
 
@@ -84,6 +86,13 @@ export async function POST(req: Request) {
 
   if (!prompt) {
     return NextResponse.json({ ok: false, error: 'Missing prompt', run_id: runId }, { status: 400 });
+  }
+
+  // Auto-detect mode if not explicitly provided.
+  if (explicitMode && (explicitMode === 'execution' || explicitMode === 'interview')) {
+    mode = explicitMode;
+  } else {
+    mode = await detectMode({ modelName: env.OPENAI_MODEL, prompt });
   }
 
   // 0) Optional rate limiting.
@@ -352,6 +361,7 @@ export async function POST(req: Request) {
       system: `${finalSystem}\n\nAGENT CONFIG ADDENDUM (self-editable):\n${agentCfg?.system_prompt_addendum ?? ''}`,
       prompt: finalPrompt,
       tools: publishingTools,
+      maxSteps: 5,
       onFinish: async ({ text }) => {
         await sql()`
           insert into agent_runs (id, mode, prompt, response, routing, artifacts, evidence, evaluator)
