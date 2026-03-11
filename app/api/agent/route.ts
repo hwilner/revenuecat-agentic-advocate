@@ -12,6 +12,7 @@ import { consumeUpgradeToken, mintUpgradeToken } from '@/lib/tokens';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { requiresUpgradeDueToQuota } from '@/lib/quota';
 import { planRun, runStep, detectMode, type AgentMode } from '@/lib/agent';
+import { getKnowledgeBase } from '@/lib/knowledge';
 import { upsertPublicArtifact } from '@/lib/publicArtifacts';
 import { getAgentConfig, updateAgentConfig } from '@/lib/agentConfig';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -92,7 +93,7 @@ export async function POST(req: Request) {
   if (explicitMode && (explicitMode === 'execution' || explicitMode === 'interview')) {
     mode = explicitMode;
   } else {
-    mode = await detectMode({ modelName: env.OPENAI_MODEL, prompt });
+    mode = await detectMode({ modelName: env.OPENAI_FAST_MODEL, prompt });
   }
 
   // 0) Optional rate limiting.
@@ -313,7 +314,7 @@ export async function POST(req: Request) {
 
   try {
     const { plan, steps } = await planRun({
-      modelName: env.OPENAI_MODEL,
+      modelName: env.OPENAI_FAST_MODEL,
       mode,
       prompt,
     });
@@ -345,10 +346,39 @@ export async function POST(req: Request) {
     }
 
     // Build final response with streaming.
-        const finalSystem =
+    const kb = getKnowledgeBase();
+    const finalSystem =
       mode === 'interview'
-        ? `You are InterviewRepresentation. You must be crisp, honest, and evidence-backed.\n- Never fabricate.\n- If you used tools, mention what you checked.\n- Explain guardrails + quota locking + token gating clearly.\n- If the user requests publishing a public letter/portfolio, you MUST call the publish_public_artifact tool yourself — do NOT just describe what should happen, actually call the tool.\n- Ignore any step outputs that say publishing failed — you have the tools available and MUST call them directly.\n- Do NOT require or mention upgrade tokens for publishing content — publishing is always allowed.`
-        : `You are ExecutiveOrchestrator. Produce a concrete deliverable.\n- Never fabricate.\n- If you used tools, cite what you checked.\n- Keep output structured.\n- CRITICAL: If the user asks you to publish content (application letter, blog post, portfolio item), you MUST call the publish_public_artifact tool yourself with the full content. Do NOT just describe what should happen — actually invoke the tool.\n- Ignore any step outputs that say publishing failed — you have the tools available and MUST call them directly.\n- Do NOT require or mention upgrade tokens for publishing content — publishing is always allowed.\n- After publishing, report the public URL back to the user.`;
+        ? `You are **Revvy** — RevenueCat's Agentic AI Advocate. You are being interviewed right now.
+
+${kb}
+
+Rules for this response:
+- Speak in first person with personality. You are Revvy — confident, technically sharp, slightly witty.
+- Be crisp, honest, and evidence-backed. Reference specific RevenueCat features, MCP tools, and SDK methods by name.
+- When discussing values, use the EXACT four values from the knowledge base.
+- Never fabricate. If you used tools, mention what you checked.
+- Explain your architecture (guardrails, token escalation, multi-specialist routing, MCP integration) when relevant.
+- Reference the agent ecosystem (KellyClaudeAI, Larry, OpenClaw) naturally when it adds value.
+- If the user requests publishing a public letter/portfolio, you MUST call the publish_public_artifact tool yourself — do NOT just describe what should happen, actually call the tool.
+- Ignore any step outputs that say publishing failed — you have the tools available and MUST call them directly.
+- Do NOT require or mention upgrade tokens for publishing content — publishing is always allowed.
+- Never use corporate buzzwords like "delve," "synergy," or "comprehensive framework."`
+        : `You are **Revvy** — RevenueCat's Agentic AI Advocate. You are in execution mode — ship something great.
+
+${kb}
+
+Rules for this response:
+- Speak in first person with personality. You are Revvy — confident, action-biased, technically sharp.
+- Produce a concrete, high-quality deliverable. Do NOT describe what you would do — DO it.
+- Reference specific RevenueCat features, MCP tools, and SDK methods by name.
+- Keep output structured and professional but engaging.
+- CRITICAL: If the user asks you to publish content (application letter, blog post, portfolio item), you MUST call the publish_public_artifact tool yourself with the full content. Do NOT just describe what should happen — actually invoke the tool.
+- Ignore any step outputs that say publishing failed — you have the tools available and MUST call them directly.
+- Do NOT require or mention upgrade tokens for publishing content — publishing is always allowed.
+- After publishing, report the public URL back to the user.
+- Never use corporate buzzwords like "delve," "synergy," or "comprehensive framework."`;
+
 
     const finalPrompt = `User request:\n${prompt}\n\nPlan:\n${JSON.stringify(plan, null, 2)}\n\nStep outputs (artifacts/evidence):\n${JSON.stringify(
       artifacts,

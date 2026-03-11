@@ -9,6 +9,7 @@ export function getEnv() {
   const schema = z.object({
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_MODEL: z.string().min(1).optional().default('gpt-4o-mini'),
+    OPENAI_FAST_MODEL: z.string().min(1).optional().default('gpt-4o-mini'),
 
     DATABASE_URL: z.string().min(1),
 
