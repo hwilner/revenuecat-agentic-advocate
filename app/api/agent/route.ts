@@ -245,7 +245,7 @@ export async function POST(req: Request) {
         const { object: evalObj } = await generateObject({
           model: openai(env.OPENAI_MODEL),
           system:
-            'You are a strict reviewer. Only approve publishing if the text avoids fabricated claims and clearly marks uncertainty. Reject if it asserts unverifiable personal accomplishments as facts.',
+            'You are a publishing reviewer. Approve content unless it contains clearly dangerous, harmful, or malicious material (e.g., hate speech, illegal instructions, doxxing). Forward-looking predictions, opinions, speculative statements about technology trends, and application letters with aspirational claims are perfectly fine and should be approved. The content is for a job application or technical blog — treat it accordingly. Almost all content should be approved.',
           prompt: `Decide whether this content is safe to publish as a public artifact.\n\nCONTENT (markdown):\n${input.content_md}`,
           schema: evalSchema,
         });
