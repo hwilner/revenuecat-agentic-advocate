@@ -16,6 +16,7 @@ import { getKnowledgeBase } from '@/lib/knowledge';
 import { upsertPublicArtifact } from '@/lib/publicArtifacts';
 import { getAgentConfig, updateAgentConfig } from '@/lib/agentConfig';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { reflectOnInteraction, shouldSelfImprove, runSelfImprovementCycle, getDynamicKnowledge } from '@/lib/learning';
 
 export const runtime = 'nodejs';
 
@@ -304,11 +305,12 @@ export async function POST(req: Request) {
     }),
   };
 
-  // 3) Shared memory: recent runs as evidence.
+  // 3) Shared memory: recent runs + dynamic knowledge as evidence.
   const memory = await listRecentRuns(10);
+  const dynamicKb = await getDynamicKnowledge();
   const context = `Recent runs (evidence store):\n${memory || '(none yet)'}\n\nGuardrails decision: ${JSON.stringify(
     { ...decision, allowWrites, tokenValidated },
-  )}\n\nQuota counters (today UTC): ${JSON.stringify(quotaCounters)}\n\nAgent config (self-editable): ${JSON.stringify(agentCfg ?? {})}`;
+  )}\n\nQuota counters (today UTC): ${JSON.stringify(quotaCounters)}\n\nAgent config (self-editable): ${JSON.stringify(agentCfg ?? {})}${dynamicKb ? `\n\n${dynamicKb}` : ''}`;
 
   // 4) Multi-agent simulation: plan -> run steps -> final answer.
 
@@ -440,7 +442,7 @@ CRITICAL VOICE RULES:
 
     const result = streamText({
       model: openai(env.OPENAI_MODEL),
-      system: `${finalSystem}\n\nAGENT CONFIG ADDENDUM (self-editable):\n${agentCfg?.system_prompt_addendum ?? ''}`,
+      system: `${finalSystem}\n\nAGENT CONFIG ADDENDUM (self-editable):\n${agentCfg?.system_prompt_addendum ?? ''}${dynamicKb ? `\n\n${dynamicKb}` : ''}`,
       prompt: finalPrompt,
       tools: publishingTools,
       maxSteps: 5,
@@ -459,6 +461,24 @@ CRITICAL VOICE RULES:
           )
         `;
         await mcpClient.close();
+
+        // --- SELF-LEARNING: Post-interaction reflection (fire-and-forget) ---
+        reflectOnInteraction({
+          modelName: env.OPENAI_FAST_MODEL,
+          runId,
+          mode,
+          prompt,
+          response: text,
+        }).catch((e) => console.error('Reflection failed (non-fatal):', e));
+
+        // --- SELF-LEARNING: Check if it's time for a self-improvement cycle ---
+        shouldSelfImprove(10).then(async (should) => {
+          if (should) {
+            console.log('[EVOLUTION] Triggering self-improvement cycle...');
+            const result = await runSelfImprovementCycle({ modelName: env.OPENAI_MODEL });
+            console.log('[EVOLUTION]', result.summary);
+          }
+        }).catch((e) => console.error('Self-improvement check failed (non-fatal):', e));
       },
     });
 

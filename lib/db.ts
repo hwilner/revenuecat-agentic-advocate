@@ -1,5 +1,6 @@
 import postgres from 'postgres';
 import { getEnv } from './env';
+import { initLearningTables } from './learning';
 
 let _sql: ReturnType<typeof postgres> | null = null;
 
@@ -101,4 +102,7 @@ export async function initDb() {
       after jsonb
     );
   `;
+
+  // Learning & evolution tables.
+  await initLearningTables();
 }
