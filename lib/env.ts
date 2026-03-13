@@ -63,6 +63,26 @@ export function getEnv() {
 
     INIT_SECRET: z.string().min(16),
     CRON_SECRET: z.string().min(16),
+
+    // --- Social Media Integrations (all optional) ---
+
+    // Twitter/X API (OAuth 1.0a for posting, Bearer for reading)
+    TWITTER_API_KEY: z.string().min(1).optional(),
+    TWITTER_API_SECRET: z.string().min(1).optional(),
+    TWITTER_ACCESS_TOKEN: z.string().min(1).optional(),
+    TWITTER_ACCESS_TOKEN_SECRET: z.string().min(1).optional(),
+    TWITTER_BEARER_TOKEN: z.string().min(1).optional(),
+
+    // GitHub API
+    GITHUB_TOKEN: z.string().min(1).optional(),
+    GITHUB_USERNAME: z.string().min(1).optional().default('revvy-agent'),
+    GITHUB_DEFAULT_REPO: z.string().min(1).optional(),
+
+    // Slack
+    SLACK_WEBHOOK_URL: z.string().url().optional(),
+    SLACK_BOT_TOKEN: z.string().min(1).optional(),
+    SLACK_DEFAULT_CHANNEL: z.string().min(1).optional().default('#revvy-updates'),
+    SLACK_FEEDBACK_CHANNEL: z.string().min(1).optional().default('#product-feedback'),
   });
 
   return schema.parse(process.env);

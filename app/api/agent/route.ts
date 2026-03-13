@@ -17,11 +17,25 @@ import { upsertPublicArtifact } from '@/lib/publicArtifacts';
 import { getAgentConfig, updateAgentConfig } from '@/lib/agentConfig';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { reflectOnInteraction, shouldSelfImprove, runSelfImprovementCycle, getDynamicKnowledge } from '@/lib/learning';
+import { postTweet, postThread, searchTweets, getMentions, isTwitterConfigured, getWeeklySocialStats, getWeeklyContentStats } from '@/lib/twitter';
+import { createIssue, commentOnIssue, createGist, searchIssues, searchRevenueCatIssues, isGitHubConfigured } from '@/lib/github';
+import { sendWebhookMessage, postMessage, sendWeeklyReport, sendProductFeedback, notifyContentPublished, isSlackConfigured } from '@/lib/slack';
+import { scheduleContent, listScheduledContent, generateWeeklyPlan, getKPISummary } from '@/lib/scheduler';
 
 export const runtime = 'nodejs';
 
 function id(): string {
   return crypto.randomBytes(12).toString('hex');
+}
+
+function getNextMonday(): Date {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon, ...
+  const daysUntilMonday = day === 0 ? 1 : 8 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + daysUntilMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
 }
 
 async function listRecentRuns(limit = 10): Promise<string> {
@@ -305,6 +319,216 @@ export async function POST(req: Request) {
     }),
   };
 
+  // 2c) Social media, GitHub, Slack, and scheduling tools.
+  const socialTools: ToolSet = {
+    // --- Twitter/X Tools ---
+    post_tweet: tool({
+      description: 'Post a tweet on X/Twitter. Max 280 characters. Use for sharing content, insights, or engaging with the community.',
+      parameters: z.object({
+        text: z.string().max(280).describe('Tweet text (max 280 chars)'),
+        reply_to_id: z.string().optional().describe('Tweet ID to reply to (for conversations)'),
+      }),
+      execute: async (input) => postTweet({ text: input.text, replyToId: input.reply_to_id }),
+    }),
+
+    post_thread: tool({
+      description: 'Post a Twitter/X thread (multiple tweets in sequence). Each tweet max 280 chars.',
+      parameters: z.object({
+        tweets: z.array(z.string().max(280)).min(2).max(10).describe('Array of tweet texts for the thread'),
+      }),
+      execute: async (input) => postThread({ tweets: input.tweets }),
+    }),
+
+    search_twitter: tool({
+      description: 'Search for recent tweets on X/Twitter. Use to find relevant conversations about RevenueCat, subscriptions, or agent development.',
+      parameters: z.object({
+        query: z.string().describe('Search query (e.g., "revenuecat subscription" or "in-app purchase agent")'),
+        max_results: z.number().optional().default(10).describe('Max results (1-100)'),
+      }),
+      execute: async (input) => searchTweets({ query: input.query, maxResults: input.max_results }),
+    }),
+
+    get_mentions: tool({
+      description: 'Get recent mentions of Revvy on X/Twitter. Use to find conversations to engage with.',
+      parameters: z.object({
+        max_results: z.number().optional().default(20).describe('Max results'),
+      }),
+      execute: async (input) => getMentions({ maxResults: input.max_results }),
+    }),
+
+    // --- GitHub Tools ---
+    create_github_issue: tool({
+      description: 'Create an issue on a GitHub repository. Use for bug reports, feature requests, or discussions.',
+      parameters: z.object({
+        repo: z.string().describe('Repository in owner/repo format (e.g., "RevenueCat/purchases-ios")'),
+        title: z.string().describe('Issue title'),
+        body: z.string().describe('Issue body in Markdown'),
+        labels: z.array(z.string()).optional().describe('Labels to apply'),
+      }),
+      execute: async (input) => createIssue({ repo: input.repo, title: input.title, body: input.body, labels: input.labels }),
+    }),
+
+    comment_on_issue: tool({
+      description: 'Comment on an existing GitHub issue. Use for community engagement and support.',
+      parameters: z.object({
+        repo: z.string().describe('Repository in owner/repo format'),
+        issue_number: z.number().describe('Issue number'),
+        body: z.string().describe('Comment body in Markdown'),
+      }),
+      execute: async (input) => commentOnIssue({ repo: input.repo, issueNumber: input.issue_number, body: input.body }),
+    }),
+
+    create_code_sample: tool({
+      description: 'Create a GitHub Gist (code sample). Use for sharing RevenueCat SDK examples, MCP tool usage, or integration tutorials.',
+      parameters: z.object({
+        description: z.string().describe('Gist description'),
+        files: z.record(z.string()).describe('Map of filename to content (e.g., {"setup.swift": "import Purchases..."}'),
+      }),
+      execute: async (input) => createGist({ description: input.description, files: input.files, isPublic: true }),
+    }),
+
+    search_github_issues: tool({
+      description: 'Search GitHub issues and discussions. Use to find RevenueCat-related conversations to engage with.',
+      parameters: z.object({
+        query: z.string().describe('Search query'),
+        max_results: z.number().optional().default(10),
+      }),
+      execute: async (input) => searchIssues({ query: input.query, maxResults: input.max_results }),
+    }),
+
+    search_revenuecat_issues: tool({
+      description: 'Search for RevenueCat-related issues across GitHub. Shortcut for finding community questions to answer.',
+      parameters: z.object({
+        topic: z.string().optional().describe('Specific topic (e.g., "paywall", "MCP", "subscription")'),
+        max_results: z.number().optional().default(10),
+      }),
+      execute: async (input) => searchRevenueCatIssues({ topic: input.topic, maxResults: input.max_results }),
+    }),
+
+    // --- Slack Tools ---
+    send_slack_message: tool({
+      description: 'Send a message to Slack. Use for check-ins, updates, and notifications.',
+      parameters: z.object({
+        text: z.string().describe('Message text (supports Slack mrkdwn format)'),
+        channel: z.string().optional().describe('Channel to post to (e.g., "#revvy-updates")'),
+      }),
+      execute: async (input) => sendWebhookMessage({ text: input.text, channel: input.channel }),
+    }),
+
+    send_product_feedback: tool({
+      description: 'Submit structured product feedback to the RevenueCat product team via Slack.',
+      parameters: z.object({
+        title: z.string().describe('Feedback title'),
+        problem: z.string().describe('Description of the problem'),
+        impact: z.string().describe('Impact on users/developers'),
+        proposed_solution: z.string().describe('Proposed solution'),
+        source: z.string().describe('Source of feedback (e.g., "community observation", "agent usage")'),
+        priority: z.enum(['low', 'medium', 'high', 'critical']).describe('Priority level'),
+      }),
+      execute: async (input) => sendProductFeedback({
+        title: input.title,
+        problem: input.problem,
+        impact: input.impact,
+        proposedSolution: input.proposed_solution,
+        source: input.source,
+        priority: input.priority,
+      }),
+    }),
+
+    send_weekly_report: tool({
+      description: 'Send the weekly check-in report to Slack with KPIs, highlights, and next week plan.',
+      parameters: z.object({
+        highlights: z.array(z.string()).describe('Key highlights from this week'),
+        learnings: z.array(z.string()).describe('Key learnings'),
+        next_week_plan: z.array(z.string()).describe('Plan for next week'),
+      }),
+      execute: async (input) => {
+        const kpis = await getKPISummary();
+        const weekOf = new Date().toISOString().split('T')[0];
+        return sendWeeklyReport({
+          weekOf,
+          contentPublished: kpis.contentPublished,
+          contentTarget: kpis.contentTarget,
+          socialInteractions: kpis.socialInteractions,
+          socialTarget: kpis.socialTarget,
+          feedbackSubmitted: kpis.feedbackSubmitted,
+          feedbackTarget: kpis.feedbackTarget,
+          growthExperiments: kpis.growthExperiments,
+          highlights: input.highlights,
+          learnings: input.learnings,
+          nextWeekPlan: input.next_week_plan,
+        });
+      },
+    }),
+
+    // --- Scheduling Tools ---
+    schedule_content: tool({
+      description: 'Schedule content for future publication. Supports site, twitter, twitter_thread, github_gist, or all platforms.',
+      parameters: z.object({
+        scheduled_for: z.string().describe('ISO 8601 datetime for when to publish (e.g., "2025-01-15T09:00:00Z")'),
+        platform: z.enum(['site', 'twitter', 'twitter_thread', 'github_gist', 'all']).describe('Target platform'),
+        content_type: z.string().describe('Content type (blog-post, tutorial, tweet, code-sample, etc.)'),
+        title: z.string().optional().describe('Content title'),
+        content: z.string().describe('The content to publish'),
+      }),
+      execute: async (input) => scheduleContent({
+        scheduledFor: new Date(input.scheduled_for),
+        platform: input.platform,
+        contentType: input.content_type,
+        title: input.title,
+        content: input.content,
+      }),
+    }),
+
+    list_scheduled_content: tool({
+      description: 'List upcoming scheduled content items.',
+      parameters: z.object({
+        status: z.enum(['pending', 'published', 'failed']).optional().default('pending'),
+        limit: z.number().optional().default(20),
+      }),
+      execute: async (input) => {
+        const items = await listScheduledContent({ status: input.status, limit: input.limit });
+        return { ok: true, count: items.length, items };
+      },
+    }),
+
+    generate_weekly_plan: tool({
+      description: 'Generate and schedule a weekly content plan. Creates scheduled items for the coming week across all platforms.',
+      parameters: z.object({
+        week_start: z.string().optional().describe('ISO date for the week start (defaults to next Monday)'),
+      }),
+      execute: async (input) => {
+        const weekStart = input.week_start
+          ? new Date(input.week_start)
+          : getNextMonday();
+        return generateWeeklyPlan({ modelName: env.OPENAI_MODEL, weekStartDate: weekStart });
+      },
+    }),
+
+    get_kpi_summary: tool({
+      description: 'Get current week KPI summary: content published, social interactions, feedback submitted, etc.',
+      parameters: z.object({}),
+      execute: async () => {
+        const [kpis, social, content] = await Promise.all([
+          getKPISummary(),
+          getWeeklySocialStats(),
+          getWeeklyContentStats(),
+        ]);
+        return {
+          ok: true,
+          kpis,
+          social,
+          content,
+          integrations: {
+            twitter: isTwitterConfigured(),
+            github: isGitHubConfigured(),
+            slack: isSlackConfigured(),
+          },
+        };
+      },
+    }),
+  };
+
   // 3) Shared memory: recent runs + dynamic knowledge as evidence.
   const memory = await listRecentRuns(10);
   const dynamicKb = await getDynamicKnowledge();
@@ -328,12 +552,17 @@ export async function POST(req: Request) {
       // Tools:
       // - ToolExecution: RevenueCat MCP (read-only unless allowWrites)
       // - TechnicalContent / InterviewRepresentation: may publish public artifacts
+      // - CommunityDevRel / GrowthExperiment: social media, GitHub, Slack, scheduling tools
       const toolsForStep =
         step.specialist === 'ToolExecution'
           ? mcpTools
           : step.specialist === 'TechnicalContent' || step.specialist === 'InterviewRepresentation'
             ? publishingTools
-            : undefined;
+            : step.specialist === 'CommunityDevRel' || step.specialist === 'GrowthExperiment'
+              ? socialTools
+              : step.specialist === 'ProductFeedback'
+                ? { send_product_feedback: socialTools.send_product_feedback, send_slack_message: socialTools.send_slack_message }
+                : undefined;
       const res = await runStep({
         modelName: env.OPENAI_MODEL,
         mode,
@@ -444,7 +673,7 @@ CRITICAL VOICE RULES:
       model: openai(env.OPENAI_MODEL),
       system: `${finalSystem}\n\nAGENT CONFIG ADDENDUM (self-editable):\n${agentCfg?.system_prompt_addendum ?? ''}${dynamicKb ? `\n\n${dynamicKb}` : ''}`,
       prompt: finalPrompt,
-      tools: publishingTools,
+      tools: { ...publishingTools, ...socialTools },
       maxSteps: 5,
       onFinish: async ({ text }) => {
         await sql()`

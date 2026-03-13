@@ -1,6 +1,7 @@
 import postgres from 'postgres';
 import { getEnv } from './env';
 import { initLearningTables } from './learning';
+import { initSocialTables } from './twitter';
 
 let _sql: ReturnType<typeof postgres> | null = null;
 
@@ -105,4 +106,7 @@ export async function initDb() {
 
   // Learning & evolution tables.
   await initLearningTables();
+
+  // Social media & scheduling tables.
+  await initSocialTables();
 }
