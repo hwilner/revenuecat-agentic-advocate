@@ -167,8 +167,10 @@ export default function Page() {
         Links: <a href="/apply">Publishing Guide</a> |{' '}
         <a href="/application-letter">Application Letter</a> |{' '}
         <a href="/portfolio">Portfolio</a> |{' '}
+        <a href="/feedback">Product Feedback</a> |{' '}
+        <a href="/campaigns">Growth Campaigns</a> |{' '}
         <a href="/evolution">Evolution Log</a> |{' '}
-        <a href="/api/health">Health</a>
+        <a href="/health">Health Dashboard</a>
       </p>
     </main>
   );

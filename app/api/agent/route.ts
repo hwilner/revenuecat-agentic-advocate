@@ -505,6 +505,42 @@ export async function POST(req: Request) {
       },
     }),
 
+    log_growth_experiment: tool({
+      description: 'Log a growth experiment to the campaigns archive. Use this when designing, starting, or completing a growth experiment.',
+      parameters: z.object({
+        title: z.string().describe('Experiment title'),
+        hypothesis: z.string().describe('The hypothesis being tested'),
+        experiment_type: z.string().describe('Type: social-media-campaign, seo-project, content-format, community-engagement, etc.'),
+        status: z.enum(['planned', 'active', 'running', 'completed', 'paused', 'failed']).describe('Current status'),
+        platforms: z.string().describe('Target platforms (e.g., "twitter, github" or "all")'),
+        description: z.string().describe('Detailed description of the experiment'),
+        results: z.string().optional().describe('Results (if completed)'),
+        metrics: z.any().optional().describe('Metrics JSON (if available)'),
+      }),
+      execute: async (input) => {
+        try {
+          const rows = await sql()<{ id: number }[]>`
+            insert into growth_experiments (title, hypothesis, experiment_type, status, platforms, description, results, metrics, completed_at)
+            values (
+              ${input.title},
+              ${input.hypothesis},
+              ${input.experiment_type},
+              ${input.status},
+              ${input.platforms},
+              ${input.description},
+              ${input.results ?? null},
+              ${JSON.stringify(input.metrics ?? {})}::jsonb,
+              ${input.status === 'completed' ? new Date().toISOString() : null}
+            )
+            returning id
+          `;
+          return { ok: true, id: rows[0]?.id, url: '/campaigns' };
+        } catch (e: any) {
+          return { ok: false, error: `Failed to log growth experiment: ${e.message}` };
+        }
+      },
+    }),
+
     get_kpi_summary: tool({
       description: 'Get current week KPI summary: content published, social interactions, feedback submitted, etc.',
       parameters: z.object({}),

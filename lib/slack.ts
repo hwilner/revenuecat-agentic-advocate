@@ -292,6 +292,17 @@ export async function sendProductFeedback(args: {
 
   const text = `[${args.priority.toUpperCase()}] Product Feedback: ${args.title}`;
 
+  // Archive the feedback to the database for the /feedback page display.
+  try {
+    await sql()`
+      insert into product_feedback_archive (title, problem, impact, proposed_solution, source, priority, status)
+      values (${args.title}, ${args.problem}, ${args.impact}, ${args.proposedSolution}, ${args.source}, ${args.priority}, 'submitted')
+    `;
+  } catch (archiveErr) {
+    // Non-fatal: if the table doesn't exist yet, we still send to Slack.
+    console.error('Failed to archive product feedback (non-fatal):', archiveErr);
+  }
+
   // Try to post to the feedback channel specifically
   if (config.botConfigured) {
     return postMessage({ channel: config.feedbackChannel, text, blocks });

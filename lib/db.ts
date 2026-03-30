@@ -104,6 +104,38 @@ export async function initDb() {
     );
   `;
 
+  // Product feedback archive (structured, for public display).
+  await db`
+    create table if not exists product_feedback_archive (
+      id bigserial primary key,
+      created_at timestamptz not null default now(),
+      title text not null,
+      problem text not null,
+      impact text not null,
+      proposed_solution text not null,
+      source text not null default 'agent usage',
+      priority text not null default 'medium',
+      status text not null default 'submitted'
+    )
+  `;
+
+  // Growth experiments archive (for campaigns showcase).
+  await db`
+    create table if not exists growth_experiments (
+      id bigserial primary key,
+      created_at timestamptz not null default now(),
+      title text not null,
+      hypothesis text not null,
+      experiment_type text not null,
+      status text not null default 'planned',
+      platforms text not null default 'all',
+      description text not null,
+      results text,
+      metrics jsonb,
+      completed_at timestamptz
+    )
+  `;
+
   // Learning & evolution tables.
   await initLearningTables();
 
