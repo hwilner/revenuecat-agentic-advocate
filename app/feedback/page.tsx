@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { sql } from '@/lib/db';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -165,10 +166,23 @@ export default async function FeedbackPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {allFeedback.map((fb) => (
-            <FeedbackCard key={fb.id} feedback={fb} />
+            <div key={fb.id}>
+              <FeedbackCard feedback={fb} />
+              <FeedbackWidget
+                page="/feedback"
+                itemId={String(fb.id)}
+                itemType="product-feedback"
+                label="Is this feedback valuable?"
+              />
+            </div>
           ))}
         </div>
       )}
+
+      {/* ---- Page-Level Feedback ---- */}
+      <div style={{ marginTop: 24 }}>
+        <FeedbackWidget page="/feedback" label="Is this feedback archive useful?" />
+      </div>
     </main>
   );
 }

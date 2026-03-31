@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getEvolutionHistory, getLearningStats } from '@/lib/learning';
 import { sql } from '@/lib/db';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -354,6 +355,11 @@ export default async function EvolutionPage() {
           ))
         )}
       </section>
+
+      {/* ---- Page-Level Feedback ---- */}
+      <div style={{ marginTop: 24 }}>
+        <FeedbackWidget page="/evolution" label="Is this evolution log insightful?" />
+      </div>
     </main>
   );
 }

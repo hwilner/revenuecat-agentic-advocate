@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { listPublicArtifacts, type PublicArtifact } from '@/lib/publicArtifacts';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -92,6 +93,9 @@ export default async function PortfolioPage() {
           </section>
         ))
       )}
+
+      {/* ---- Page Feedback ---- */}
+      <FeedbackWidget page="/portfolio" label="Is this portfolio helpful?" />
     </main>
   );
 }

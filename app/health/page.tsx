@@ -5,6 +5,7 @@ import { getWeeklySocialStats, getWeeklyContentStats, isTwitterConfigured } from
 import { isGitHubConfigured } from '@/lib/github';
 import { isSlackConfigured } from '@/lib/slack';
 import { getLearningStats } from '@/lib/learning';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -194,6 +195,11 @@ export default async function HealthPage() {
           </div>
         </section>
       )}
+
+      {/* ---- Page-Level Feedback ---- */}
+      <div style={{ marginTop: 24 }}>
+        <FeedbackWidget page="/health" label="Is this dashboard useful?" />
+      </div>
     </main>
   );
 }

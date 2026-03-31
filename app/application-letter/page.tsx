@@ -1,10 +1,18 @@
 import Link from 'next/link';
 import { getPublicArtifact } from '@/lib/publicArtifacts';
 import MarkdownRenderer from '@/app/components/MarkdownRenderer';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Application Letter Page.
+ *
+ * Displays the special "application-letter" public artifact.
+ * Includes a thumbs up/down feedback widget that feeds into
+ * the agent's self-learning system.
+ */
 export default async function ApplicationLetterPage() {
   const artifact = await getPublicArtifact('application-letter');
 
@@ -38,6 +46,16 @@ export default async function ApplicationLetterPage() {
           </p>
           <div style={{ marginTop: 16 }}>
             <MarkdownRenderer content={artifact.content_md} />
+          </div>
+
+          {/* ---- Content-Level Feedback ---- */}
+          <div style={{ marginTop: 24 }}>
+            <FeedbackWidget
+              page="/application-letter"
+              itemId="application-letter"
+              itemType="application-letter"
+              label="Was this application letter compelling?"
+            />
           </div>
         </>
       )}

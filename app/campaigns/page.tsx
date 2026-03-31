@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { sql } from '@/lib/db';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -205,11 +206,24 @@ export default async function CampaignsPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {experiments.map((exp) => (
-              <ExperimentCard key={exp.id} experiment={exp} />
+              <div key={exp.id}>
+                <ExperimentCard experiment={exp} />
+                <FeedbackWidget
+                  page="/campaigns"
+                  itemId={String(exp.id)}
+                  itemType="growth-experiment"
+                  label="Is this experiment insightful?"
+                />
+              </div>
             ))}
           </div>
         )}
       </section>
+
+      {/* ---- Page-Level Feedback ---- */}
+      <div style={{ marginTop: 24 }}>
+        <FeedbackWidget page="/campaigns" label="Is this campaigns page useful?" />
+      </div>
     </main>
   );
 }

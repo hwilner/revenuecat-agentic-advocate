@@ -2,6 +2,7 @@ import postgres from 'postgres';
 import { getEnv } from './env';
 import { initLearningTables } from './learning';
 import { initSocialTables } from './twitter';
+import { seedSampleData } from '../scripts/seed-sample-data';
 
 let _sql: ReturnType<typeof postgres> | null = null;
 
@@ -141,4 +142,12 @@ export async function initDb() {
 
   // Social media & scheduling tables.
   await initSocialTables();
+
+  // Seed sample data for archive pages (idempotent — only inserts if tables are empty).
+  try {
+    await seedSampleData();
+  } catch (e) {
+    // Non-fatal: seeding failure should not block app initialization.
+    console.error('Sample data seeding failed (non-fatal):', e);
+  }
 }

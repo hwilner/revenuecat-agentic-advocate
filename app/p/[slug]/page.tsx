@@ -1,10 +1,18 @@
 import Link from 'next/link';
 import { getPublicArtifact } from '@/lib/publicArtifacts';
 import MarkdownRenderer from '@/app/components/MarkdownRenderer';
+import FeedbackWidget from '@/app/components/FeedbackWidget';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Public Artifact Page.
+ *
+ * Renders a single published content piece (blog post, tutorial, etc.)
+ * identified by its slug. Includes a thumbs up/down feedback widget
+ * that feeds into the agent's self-learning system.
+ */
 export default async function PublicArtifactPage({
   params,
 }: {
@@ -33,6 +41,16 @@ export default async function PublicArtifactPage({
           </p>
           <div style={{ marginTop: 16 }}>
             <MarkdownRenderer content={artifact.content_md} />
+          </div>
+
+          {/* ---- Content-Level Feedback ---- */}
+          <div style={{ marginTop: 24 }}>
+            <FeedbackWidget
+              page={`/p/${params.slug}`}
+              itemId={params.slug}
+              itemType={artifact.kind}
+              label="Was this content helpful?"
+            />
           </div>
         </>
       )}
